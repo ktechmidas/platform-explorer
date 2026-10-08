@@ -154,8 +154,12 @@ fn changed_properties(
 }
 
 // A restore needs the target document's byte layout, not the indexes of every
-// other document type in its contract. Retain its complete schema, shared
-// definitions, config and tokens; only narrow this temporary decoder input.
+// other document type in its contract, or its consensus property constraints.
+// Retain all byte-layout properties, shared definitions, config and tokens;
+// only narrow this temporary decoder input. propertyConstraints is a doctype-
+// level validation rule set, not a property or part of document serialization.
+// In particular, newer constraint expressions must not prevent projecting a
+// successful on-chain restore with the published DPP document decoder.
 // The original contract transition and full Explorer schema remain untouched.
 fn restore_document_contract(
     mut format: dpp::data_contract::serialized_version::DataContractInSerializationFormat,
@@ -170,6 +174,12 @@ fn restore_document_contract(
     format
         .document_schemas_mut()
         .retain(|name, _| name == document_type_name);
+    format
+        .document_schemas_mut()
+        .get_mut(document_type_name)
+        .expect("target schema was checked above")
+        .remove_optional_value("propertyConstraints")
+        .map_err(|e| format!("restore document schema: {e}"))?;
     dpp::data_contract::DataContract::try_from_platform_versioned(
         format,
         false,
@@ -711,6 +721,84 @@ mod tests {
                 .is_err(),
             "malformed restored bytes must still fail"
         );
+    }
+
+    #[tokio::test]
+    async fn actual_restore_2422_ignores_validation_grammar_without_losing_document() {
+        use dpp::data_contract::document_type::accessors::DocumentTypeV0Getters;
+        use dpp::serialization::PlatformSerializable;
+
+        let fixture: Value = serde_json::from_str(include_str!(
+            "../../../../tests/fixtures/sakura-restore-2422.json"
+        ))
+        .unwrap();
+        let decoder = crate::decoder::decoder::StateTransitionDecoder::new();
+        let bytes = STANDARD.decode(fixture["txBase64"].as_str().unwrap()).unwrap();
+        assert_eq!(sha256::digest(&bytes).to_uppercase(), fixture["txSha256"]);
+        let decoded = decoder.decode(bytes.clone()).await.unwrap();
+        assert_eq!(decoded.serialize_to_bytes().unwrap(), bytes);
+        let StateTransition::ContractUserModeration(ContractUserModerationTransition::V0(st)) = decoded else {
+            panic!("expected captured restore moderation");
+        };
+        assert_eq!(st.data_contract_id.to_string(Base58), fixture["contractId"]);
+        let Action::RestoreDocument { document_type_name, document } = st.action else {
+            panic!("expected captured restore document");
+        };
+        assert_eq!(document_type_name, fixture["documentTypeName"]);
+
+        let contract_bytes = STANDARD.decode(fixture["contractTransitionBase64"].as_str().unwrap()).unwrap();
+        assert_eq!(sha256::digest(&contract_bytes).to_uppercase(), fixture["contractTransitionSha256"]);
+        let contract_transition = decoder.decode(contract_bytes.clone()).await.unwrap();
+        assert_eq!(contract_transition.serialize_to_bytes().unwrap(), contract_bytes);
+        let (format, projected) = match contract_transition {
+            StateTransition::DataContractCreate(v) => {
+                let projected = crate::entities::data_contract::DataContract::from(v.clone());
+                let format = match v {
+                    dpp::state_transition::data_contract_create_transition::DataContractCreateTransition::V0(v) => v.data_contract,
+                    dpp::state_transition::data_contract_create_transition::DataContractCreateTransition::V1(v) => v.data_contract,
+                };
+                (format, projected)
+            }
+            StateTransition::DataContractUpdate(v) => {
+                let projected = crate::entities::data_contract::DataContract::from(v.clone());
+                let dpp::state_transition::data_contract_update_transition::DataContractUpdateTransition::V0(v) = v;
+                (v.data_contract, projected)
+            }
+            _ => panic!("expected captured retained contract transition"),
+        };
+        let original_format = format.clone();
+        let original_schema = serde_json::to_value(format.document_schemas()).unwrap();
+        let constraints = &original_schema[&document_type_name]["propertyConstraints"];
+        assert!(constraints.to_string().contains("countPresent"));
+        assert_eq!(projected.schema.as_ref().unwrap(), &original_schema,
+            "stored Explorer projection must retain every constraint and document type");
+
+        let version = dpp::version::PlatformVersion::get(14).unwrap();
+        let mut previous_decoder_input = format.clone();
+        previous_decoder_input.document_schemas_mut().retain(|name, _| name == &document_type_name);
+        let error = dpp::data_contract::DataContract::try_from_platform_versioned(
+            previous_decoder_input, false, &mut vec![], version,
+        ).unwrap_err().to_string();
+        assert!(error.contains("countPresent"), "must reproduce actual compatibility failure: {error}");
+
+        let contract = restore_document_contract(format.clone(), &document_type_name, version).unwrap();
+        assert_eq!(format, original_format, "retained contract must stay unchanged");
+        let document_type = contract.document_type_for_name(&document_type_name).unwrap();
+        let mut expected_decoder_schema = original_schema[&document_type_name].clone();
+        expected_decoder_schema.as_object_mut().unwrap().remove("propertyConstraints");
+        assert_eq!(serde_json::to_value(document_type.schema()).unwrap(), expected_decoder_schema,
+            "only top-level validation rules may differ in the temporary decoder schema");
+
+        let restored = dpp::document::Document::from_bytes(document.as_slice(), document_type, version).unwrap();
+        let expected = &fixture["expectedDocument"];
+        assert_eq!(restored.id().to_string(Base58), expected["id"]);
+        assert_eq!(restored.owner_id().to_string(Base58), expected["ownerId"]);
+        assert_eq!(restored.revision(), expected["revision"].as_u64());
+        assert_eq!(serde_json::to_value(restored.properties()).unwrap(), expected["properties"]);
+        assert_eq!(restored.serialize(document_type, &contract, version).unwrap(), document.as_slice(),
+            "every original document byte must round-trip, including timestamps and version stamp");
+        assert!(dpp::document::Document::from_bytes(&document.as_slice()[..20], document_type, version).is_err());
+        assert!(restore_document_contract(format, "missing-type", version).unwrap_err().contains("missing restore document type"));
     }
 
     #[tokio::test]
