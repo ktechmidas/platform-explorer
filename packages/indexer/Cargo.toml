@@ -12,8 +12,8 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tokio = { version = "1.12.0", features = ["full"] }
 futures = "0.3"
-dpp = { git = "https://github.com/dashpay/platform", rev = "cf8cff9a6891a004362bd36c1eec3c864cc8eeb0" }
-data-contracts = { git = "https://github.com/dashpay/platform", rev = "cf8cff9a6891a004362bd36c1eec3c864cc8eeb0" }
+dpp = { git = "https://github.com/dashpay/platform", rev = "371a3b3961c24cdb4bcd5aed1d0b6f32f5fcc025" }
+data-contracts = { git = "https://github.com/dashpay/platform", rev = "371a3b3961c24cdb4bcd5aed1d0b6f32f5fcc025" }
 async-trait = { version = "0.1"}
 anyhow = { version = "1.0"}
 base64 = "0.21.2"
@@ -27,3 +27,8 @@ time = { version="0.3.29", features=["serde"] }
 dashcore-rpc = { git = "https://github.com/dashpay/rust-dashcore", rev = "40268cc0402a8933ec539f16b2d634c4e25876ad" }
 hex = "0.4.3"
 bincode_derive = "=2.0.1"
+
+[dev-dependencies]
+# Frozen pre-reset fixtures used beta.2's incompatible token-V1 binary layout.
+# Test-only: never fall back between protocol decoders on the live chain.
+dpp_legacy_beta2 = { package = "dpp", git = "https://github.com/dashpay/platform", rev = "cf8cff9a6891a004362bd36c1eec3c864cc8eeb0" }

@@ -78,11 +78,11 @@ checksum = "330a5ed07fa54e4702c9d6c4174f74427fc0ef6e214bbd677ae50a5099946470"
 
 [[package]]
 name = "app-connect-contract"
-version = "5.0.0-beta.2"
-source = "git+https://github.com/dashpay/platform?rev=cf8cff9a6891a004362bd36c1eec3c864cc8eeb0#cf8cff9a6891a004362bd36c1eec3c864cc8eeb0"
+version = "5.0.0-beta.5"
+source = "git+https://github.com/dashpay/platform?rev=371a3b3961c24cdb4bcd5aed1d0b6f32f5fcc025#371a3b3961c24cdb4bcd5aed1d0b6f32f5fcc025"
 dependencies = [
- "platform-value",
- "platform-version",
+ "platform-value 5.0.0-beta.5",
+ "platform-version 5.0.0-beta.5",
  "serde_json",
  "thiserror 2.0.19",
 ]
@@ -642,19 +642,19 @@ dependencies = [
 
 [[package]]
 name = "dashpay-contract"
-version = "5.0.0-beta.2"
-source = "git+https://github.com/dashpay/platform?rev=cf8cff9a6891a004362bd36c1eec3c864cc8eeb0#cf8cff9a6891a004362bd36c1eec3c864cc8eeb0"
+version = "5.0.0-beta.5"
+source = "git+https://github.com/dashpay/platform?rev=371a3b3961c24cdb4bcd5aed1d0b6f32f5fcc025#371a3b3961c24cdb4bcd5aed1d0b6f32f5fcc025"
 dependencies = [
- "platform-value",
- "platform-version",
+ "platform-value 5.0.0-beta.5",
+ "platform-version 5.0.0-beta.5",
  "serde_json",
  "thiserror 2.0.19",
 ]
 
 [[package]]
 name = "data-contracts"
-version = "5.0.0-beta.2"
-source = "git+https://github.com/dashpay/platform?rev=cf8cff9a6891a004362bd36c1eec3c864cc8eeb0#cf8cff9a6891a004362bd36c1eec3c864cc8eeb0"
+version = "5.0.0-beta.5"
+source = "git+https://github.com/dashpay/platform?rev=371a3b3961c24cdb4bcd5aed1d0b6f32f5fcc025#371a3b3961c24cdb4bcd5aed1d0b6f32f5fcc025"
 dependencies = [
  "app-connect-contract",
  "dashpay-contract",
@@ -663,8 +663,8 @@ dependencies = [
  "keyword-search-contract",
  "masternode-reward-shares-contract",
  "moderation-charters-contract",
- "platform-value",
- "platform-version",
+ "platform-value 5.0.0-beta.5",
+ "platform-version 5.0.0-beta.5",
  "serde_json",
  "thiserror 2.0.19",
  "token-history-contract",
@@ -812,11 +812,11 @@ dependencies = [
 
 [[package]]
 name = "document-history-contract"
-version = "5.0.0-beta.2"
-source = "git+https://github.com/dashpay/platform?rev=cf8cff9a6891a004362bd36c1eec3c864cc8eeb0#cf8cff9a6891a004362bd36c1eec3c864cc8eeb0"
+version = "5.0.0-beta.5"
+source = "git+https://github.com/dashpay/platform?rev=371a3b3961c24cdb4bcd5aed1d0b6f32f5fcc025#371a3b3961c24cdb4bcd5aed1d0b6f32f5fcc025"
 dependencies = [
- "platform-value",
- "platform-version",
+ "platform-value 5.0.0-beta.5",
+ "platform-version 5.0.0-beta.5",
  "serde_json",
  "thiserror 2.0.19",
 ]
@@ -829,11 +829,11 @@ checksum = "77c90badedccf4105eca100756a0b1289e191f6fcbdadd3cee1d2f614f97da8f"
 
 [[package]]
 name = "dpns-contract"
-version = "5.0.0-beta.2"
-source = "git+https://github.com/dashpay/platform?rev=cf8cff9a6891a004362bd36c1eec3c864cc8eeb0#cf8cff9a6891a004362bd36c1eec3c864cc8eeb0"
+version = "5.0.0-beta.5"
+source = "git+https://github.com/dashpay/platform?rev=371a3b3961c24cdb4bcd5aed1d0b6f32f5fcc025#371a3b3961c24cdb4bcd5aed1d0b6f32f5fcc025"
 dependencies = [
- "platform-value",
- "platform-version",
+ "platform-value 5.0.0-beta.5",
+ "platform-version 5.0.0-beta.5",
  "serde_json",
  "thiserror 2.0.19",
 ]
@@ -852,7 +852,7 @@ dependencies = [
  "chrono",
  "dashcore",
  "derive_more",
- "dpp-json-convertible-derive",
+ "dpp-json-convertible-derive 5.0.0-beta.2",
  "env_logger",
  "getrandom 0.2.17",
  "grovedb-bincode",
@@ -865,11 +865,54 @@ dependencies = [
  "nohash-hasher",
  "num_enum 0.7.6",
  "once_cell",
- "platform-serialization",
- "platform-serialization-derive",
- "platform-value",
- "platform-version",
- "platform-versioning",
+ "platform-serialization 5.0.0-beta.2",
+ "platform-serialization-derive 5.0.0-beta.2",
+ "platform-value 5.0.0-beta.2",
+ "platform-version 5.0.0-beta.2",
+ "platform-versioning 5.0.0-beta.2",
+ "rand 0.8.7",
+ "regex",
+ "serde",
+ "serde_json",
+ "serde_repr",
+ "sha2 0.10.9",
+ "strum",
+ "thiserror 2.0.19",
+ "tracing",
+]
+
+[[package]]
+name = "dpp"
+version = "5.0.0-beta.5"
+source = "git+https://github.com/dashpay/platform?rev=371a3b3961c24cdb4bcd5aed1d0b6f32f5fcc025#371a3b3961c24cdb4bcd5aed1d0b6f32f5fcc025"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "base64 0.22.1",
+ "bech32 0.11.1",
+ "bs58",
+ "byteorder",
+ "chrono",
+ "dashcore",
+ "derive_more",
+ "dpp-json-convertible-derive 5.0.0-beta.5",
+ "env_logger",
+ "getrandom 0.2.17",
+ "grovedb-bincode",
+ "hex",
+ "indexmap 2.14.0",
+ "integer-encoding",
+ "itertools",
+ "lazy_static",
+ "libm",
+ "nohash-hasher",
+ "num_enum 0.7.6",
+ "once_cell",
+ "platform-serialization 5.0.0-beta.5",
+ "platform-serialization-derive 5.0.0-beta.5",
+ "platform-value 5.0.0-beta.5",
+ "platform-version 5.0.0-beta.5",
+ "platform-versioning 5.0.0-beta.5",
  "rand 0.8.7",
  "regex",
  "serde",
@@ -885,6 +928,16 @@ dependencies = [
 name = "dpp-json-convertible-derive"
 version = "5.0.0-beta.2"
 source = "git+https://github.com/dashpay/platform?rev=cf8cff9a6891a004362bd36c1eec3c864cc8eeb0#cf8cff9a6891a004362bd36c1eec3c864cc8eeb0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.119",
+]
+
+[[package]]
+name = "dpp-json-convertible-derive"
+version = "5.0.0-beta.5"
+source = "git+https://github.com/dashpay/platform?rev=371a3b3961c24cdb4bcd5aed1d0b6f32f5fcc025#371a3b3961c24cdb4bcd5aed1d0b6f32f5fcc025"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1171,6 +1224,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9eaff4e961dcb3e7e55c34c8c6982249036e5aaa19e55f6dab94ebcd4896b03a"
 dependencies = [
  "virtue 0.0.18",
+]
+
+[[package]]
+name = "grovedb-version"
+version = "6.0.1"
+source = "git+https://github.com/dashpay/grovedb?rev=5cb0962afdd3df8d58cd9f40cc723ce1f475aeb5#5cb0962afdd3df8d58cd9f40cc723ce1f475aeb5"
+dependencies = [
+ "thiserror 2.0.19",
+ "versioned-feature-core",
 ]
 
 [[package]]
@@ -1493,7 +1555,8 @@ dependencies = [
  "data-contracts",
  "deadpool-postgres",
  "dotenv",
- "dpp",
+ "dpp 5.0.0-beta.2",
+ "dpp 5.0.0-beta.5",
  "futures",
  "hex",
  "refinery",
@@ -1645,11 +1708,11 @@ dependencies = [
 
 [[package]]
 name = "keyword-search-contract"
-version = "5.0.0-beta.2"
-source = "git+https://github.com/dashpay/platform?rev=cf8cff9a6891a004362bd36c1eec3c864cc8eeb0#cf8cff9a6891a004362bd36c1eec3c864cc8eeb0"
+version = "5.0.0-beta.5"
+source = "git+https://github.com/dashpay/platform?rev=371a3b3961c24cdb4bcd5aed1d0b6f32f5fcc025#371a3b3961c24cdb4bcd5aed1d0b6f32f5fcc025"
 dependencies = [
- "platform-value",
- "platform-version",
+ "platform-value 5.0.0-beta.5",
+ "platform-version 5.0.0-beta.5",
  "serde_json",
  "thiserror 2.0.19",
 ]
@@ -1710,11 +1773,11 @@ checksum = "0ceec5bc11778974d1bcb055b18002eba7f4b3518b6a0081b3af5f21666da9ad"
 
 [[package]]
 name = "masternode-reward-shares-contract"
-version = "5.0.0-beta.2"
-source = "git+https://github.com/dashpay/platform?rev=cf8cff9a6891a004362bd36c1eec3c864cc8eeb0#cf8cff9a6891a004362bd36c1eec3c864cc8eeb0"
+version = "5.0.0-beta.5"
+source = "git+https://github.com/dashpay/platform?rev=371a3b3961c24cdb4bcd5aed1d0b6f32f5fcc025#371a3b3961c24cdb4bcd5aed1d0b6f32f5fcc025"
 dependencies = [
- "platform-value",
- "platform-version",
+ "platform-value 5.0.0-beta.5",
+ "platform-version 5.0.0-beta.5",
  "serde_json",
  "thiserror 2.0.19",
 ]
@@ -1754,11 +1817,11 @@ dependencies = [
 
 [[package]]
 name = "moderation-charters-contract"
-version = "5.0.0-beta.2"
-source = "git+https://github.com/dashpay/platform?rev=cf8cff9a6891a004362bd36c1eec3c864cc8eeb0#cf8cff9a6891a004362bd36c1eec3c864cc8eeb0"
+version = "5.0.0-beta.5"
+source = "git+https://github.com/dashpay/platform?rev=371a3b3961c24cdb4bcd5aed1d0b6f32f5fcc025#371a3b3961c24cdb4bcd5aed1d0b6f32f5fcc025"
 dependencies = [
- "platform-value",
- "platform-version",
+ "platform-value 5.0.0-beta.5",
+ "platform-version 5.0.0-beta.5",
  "serde_json",
  "thiserror 2.0.19",
 ]
@@ -2003,13 +2066,33 @@ version = "5.0.0-beta.2"
 source = "git+https://github.com/dashpay/platform?rev=cf8cff9a6891a004362bd36c1eec3c864cc8eeb0#cf8cff9a6891a004362bd36c1eec3c864cc8eeb0"
 dependencies = [
  "grovedb-bincode",
- "platform-version",
+ "platform-version 5.0.0-beta.2",
+]
+
+[[package]]
+name = "platform-serialization"
+version = "5.0.0-beta.5"
+source = "git+https://github.com/dashpay/platform?rev=371a3b3961c24cdb4bcd5aed1d0b6f32f5fcc025#371a3b3961c24cdb4bcd5aed1d0b6f32f5fcc025"
+dependencies = [
+ "grovedb-bincode",
+ "platform-version 5.0.0-beta.5",
 ]
 
 [[package]]
 name = "platform-serialization-derive"
 version = "5.0.0-beta.2"
 source = "git+https://github.com/dashpay/platform?rev=cf8cff9a6891a004362bd36c1eec3c864cc8eeb0#cf8cff9a6891a004362bd36c1eec3c864cc8eeb0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.119",
+ "virtue 0.0.17",
+]
+
+[[package]]
+name = "platform-serialization-derive"
+version = "5.0.0-beta.5"
+source = "git+https://github.com/dashpay/platform?rev=371a3b3961c24cdb4bcd5aed1d0b6f32f5fcc025#371a3b3961c24cdb4bcd5aed1d0b6f32f5fcc025"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2027,8 +2110,26 @@ dependencies = [
  "grovedb-bincode",
  "hex",
  "indexmap 2.14.0",
- "platform-serialization",
- "platform-version",
+ "platform-serialization 5.0.0-beta.2",
+ "platform-version 5.0.0-beta.2",
+ "rand 0.8.7",
+ "serde",
+ "thiserror 2.0.19",
+ "treediff",
+]
+
+[[package]]
+name = "platform-value"
+version = "5.0.0-beta.5"
+source = "git+https://github.com/dashpay/platform?rev=371a3b3961c24cdb4bcd5aed1d0b6f32f5fcc025#371a3b3961c24cdb4bcd5aed1d0b6f32f5fcc025"
+dependencies = [
+ "base64 0.22.1",
+ "bs58",
+ "grovedb-bincode",
+ "hex",
+ "indexmap 2.14.0",
+ "platform-serialization 5.0.0-beta.5",
+ "platform-version 5.0.0-beta.5",
  "rand 0.8.7",
  "serde",
  "thiserror 2.0.19",
@@ -2041,7 +2142,18 @@ version = "5.0.0-beta.2"
 source = "git+https://github.com/dashpay/platform?rev=cf8cff9a6891a004362bd36c1eec3c864cc8eeb0#cf8cff9a6891a004362bd36c1eec3c864cc8eeb0"
 dependencies = [
  "grovedb-bincode",
- "grovedb-version",
+ "grovedb-version 6.0.1 (git+https://github.com/dashpay/grovedb?rev=9791d277207998b7789c85b0745e99d37040a12e)",
+ "thiserror 2.0.19",
+ "versioned-feature-core",
+]
+
+[[package]]
+name = "platform-version"
+version = "5.0.0-beta.5"
+source = "git+https://github.com/dashpay/platform?rev=371a3b3961c24cdb4bcd5aed1d0b6f32f5fcc025#371a3b3961c24cdb4bcd5aed1d0b6f32f5fcc025"
+dependencies = [
+ "grovedb-bincode",
+ "grovedb-version 6.0.1 (git+https://github.com/dashpay/grovedb?rev=5cb0962afdd3df8d58cd9f40cc723ce1f475aeb5)",
  "thiserror 2.0.19",
  "versioned-feature-core",
 ]
@@ -2050,6 +2162,16 @@ dependencies = [
 name = "platform-versioning"
 version = "5.0.0-beta.2"
 source = "git+https://github.com/dashpay/platform?rev=cf8cff9a6891a004362bd36c1eec3c864cc8eeb0#cf8cff9a6891a004362bd36c1eec3c864cc8eeb0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.119",
+]
+
+[[package]]
+name = "platform-versioning"
+version = "5.0.0-beta.5"
+source = "git+https://github.com/dashpay/platform?rev=371a3b3961c24cdb4bcd5aed1d0b6f32f5fcc025#371a3b3961c24cdb4bcd5aed1d0b6f32f5fcc025"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2928,11 +3050,11 @@ checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
 
 [[package]]
 name = "token-history-contract"
-version = "5.0.0-beta.2"
-source = "git+https://github.com/dashpay/platform?rev=cf8cff9a6891a004362bd36c1eec3c864cc8eeb0#cf8cff9a6891a004362bd36c1eec3c864cc8eeb0"
+version = "5.0.0-beta.5"
+source = "git+https://github.com/dashpay/platform?rev=371a3b3961c24cdb4bcd5aed1d0b6f32f5fcc025#371a3b3961c24cdb4bcd5aed1d0b6f32f5fcc025"
 dependencies = [
- "platform-value",
- "platform-version",
+ "platform-value 5.0.0-beta.5",
+ "platform-version 5.0.0-beta.5",
  "serde_json",
  "thiserror 2.0.19",
 ]
@@ -3287,11 +3409,11 @@ dependencies = [
 
 [[package]]
 name = "wallet-utils-contract"
-version = "5.0.0-beta.2"
-source = "git+https://github.com/dashpay/platform?rev=cf8cff9a6891a004362bd36c1eec3c864cc8eeb0#cf8cff9a6891a004362bd36c1eec3c864cc8eeb0"
+version = "5.0.0-beta.5"
+source = "git+https://github.com/dashpay/platform?rev=371a3b3961c24cdb4bcd5aed1d0b6f32f5fcc025#371a3b3961c24cdb4bcd5aed1d0b6f32f5fcc025"
 dependencies = [
- "platform-value",
- "platform-version",
+ "platform-value 5.0.0-beta.5",
+ "platform-version 5.0.0-beta.5",
  "serde_json",
  "thiserror 2.0.19",
 ]
@@ -3677,12 +3799,12 @@ checksum = "1ebf944e87a7c253233ad6766e082e3cd714b5d03812acc24c318f549614536e"
 
 [[package]]
 name = "withdrawals-contract"
-version = "5.0.0-beta.2"
-source = "git+https://github.com/dashpay/platform?rev=cf8cff9a6891a004362bd36c1eec3c864cc8eeb0#cf8cff9a6891a004362bd36c1eec3c864cc8eeb0"
+version = "5.0.0-beta.5"
+source = "git+https://github.com/dashpay/platform?rev=371a3b3961c24cdb4bcd5aed1d0b6f32f5fcc025#371a3b3961c24cdb4bcd5aed1d0b6f32f5fcc025"
 dependencies = [
  "num_enum 0.5.11",
- "platform-value",
- "platform-version",
+ "platform-value 5.0.0-beta.5",
+ "platform-version 5.0.0-beta.5",
  "serde",
  "serde_json",
  "serde_repr",

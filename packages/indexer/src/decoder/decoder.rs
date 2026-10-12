@@ -35,6 +35,61 @@ mod tests {
     use dpp::state_transition::batch_transition::BatchTransition;
 
     #[tokio::test]
+    async fn sakura_beta5_contract_485_preserves_complete_wire_data() {
+        let fixture: serde_json::Value = serde_json::from_str(include_str!(
+            "../../tests/fixtures/sakura-beta5-contract-485.json"
+        )).unwrap();
+        let result: crate::models::TDTxResult =
+            serde_json::from_value(fixture["result"].clone()).unwrap();
+        assert_eq!(result.code.unwrap_or(0), 0);
+        let encoded = fixture["txBase64"].as_str().unwrap();
+        let bytes = STANDARD.decode(encoded).unwrap();
+        assert_eq!(bytes.len(), 16456);
+        assert_eq!(sha256::digest(&bytes).to_uppercase(), fixture["txSha256"]);
+        let transition = decode_block_transaction(&StateTransitionDecoder::new(), encoded, 485, 0)
+            .await.unwrap();
+        assert_eq!(transition.serialize_to_bytes().unwrap(), bytes);
+        let StateTransition::DataContractCreate(transition) = transition else {
+            panic!("expected successful data contract creation");
+        };
+        use dpp::data_contract::serialized_version::DataContractInSerializationFormat;
+        use dpp::state_transition::data_contract_create_transition::DataContractCreateTransition;
+        let original = match &transition {
+            DataContractCreateTransition::V0(v) => &v.data_contract,
+            DataContractCreateTransition::V1(v) => &v.data_contract,
+        };
+        let DataContractInSerializationFormat::V1(original) = original else {
+            panic!("expected beta.5 contract V1");
+        };
+        let original_schema = serde_json::to_value(&original.document_schemas).unwrap();
+        let original_tokens = serde_json::to_value(&original.tokens).unwrap();
+        assert!(original.tokens.values().any(|token| matches!(token, dpp::data_contract::TokenConfiguration::V1(_))),
+            "captured contract exercises beta.5 token-V1 wire layout");
+        let contract = crate::entities::data_contract::DataContract::from(transition);
+        assert_eq!(contract.schema.as_ref().unwrap(), &original_schema);
+        assert_eq!(serde_json::to_value(contract.tokens.as_ref().unwrap()).unwrap(), original_tokens);
+        assert!(contract.schema.as_ref().unwrap().as_object().unwrap().len() > 0);
+        assert!(StateTransitionDecoder::new().decode(bytes[..bytes.len() / 2].to_vec()).await.is_err());
+    }
+
+    fn has_legacy_v1_token(transition: &dpp_legacy_beta2::state_transition::StateTransition) -> bool {
+        use dpp_legacy_beta2::data_contract::serialized_version::DataContractInSerializationFormat as Format;
+        use dpp_legacy_beta2::state_transition::data_contract_create_transition::DataContractCreateTransition as Create;
+        use dpp_legacy_beta2::state_transition::data_contract_update_transition::DataContractUpdateTransition as Update;
+        use dpp_legacy_beta2::state_transition::StateTransition as Legacy;
+        let format = match transition {
+            Legacy::DataContractCreate(Create::V0(v)) => &v.data_contract,
+            Legacy::DataContractCreate(Create::V1(v)) => &v.data_contract,
+            Legacy::DataContractUpdate(Update::V0(v)) => &v.data_contract,
+            _ => return false,
+        };
+        match format {
+            Format::V1(v) => v.tokens.values().any(|t| matches!(t, dpp_legacy_beta2::data_contract::TokenConfiguration::V1(_))),
+            Format::V0(_) => false,
+        }
+    }
+
+    #[tokio::test]
     async fn sakura_tail_7392_through_7505_preserves_every_wire_transaction() {
         let fixtures: serde_json::Value = serde_json::from_str(include_str!(
             "../../tests/fixtures/sakura-tail-7392-7505.json"
@@ -48,21 +103,24 @@ mod tests {
             let encoded = fixture["txBase64"].as_str().unwrap();
             let bytes = STANDARD.decode(encoded).unwrap();
             assert_eq!(sha256::digest(&bytes).to_uppercase(), fixture["txSha256"]);
-            let transition =
-                decode_block_transaction(&StateTransitionDecoder::new(), encoded, height, index)
-                    .await
-                    .unwrap();
-            assert_eq!(
-                transition.serialize_to_bytes().unwrap(),
-                bytes,
-                "wire data at {height}/{index}"
-            );
+            // This archived chain predates the beta.5 reset. Prove every original
+            // byte still roundtrips with its published decoder; the live decoder
+            // must not silently reinterpret an incompatible token-V1 layout.
+            let legacy = dpp_legacy_beta2::state_transition::state_transition_factory::StateTransitionFactory {}
+                .create_from_buffer(&bytes).unwrap();
+            assert_eq!(dpp_legacy_beta2::serialization::PlatformSerializable::serialize_to_bytes(&legacy).unwrap(), bytes);
+            let current = decode_block_transaction(&StateTransitionDecoder::new(), encoded, height, index).await;
+            if has_legacy_v1_token(&legacy) {
+                assert!(current.is_err(), "beta.2 token bytes must fail closed at {height}/{index}");
+            } else {
+                assert_eq!(current.unwrap().serialize_to_bytes().unwrap(), bytes, "wire data at {height}/{index}");
+            }
             let result: crate::models::TDTxResult =
                 serde_json::from_value(fixture["result"].clone()).unwrap();
             println!(
                 "captured {height}/{index} code={} transition={}",
                 result.code.unwrap_or(0),
-                transition.state_transition_type()
+                legacy.state_transition_type()
             );
         }
     }
@@ -87,13 +145,34 @@ mod tests {
         let encoded = fixture["txBase64"].as_str().unwrap();
         let bytes = STANDARD.decode(encoded).unwrap();
         assert_eq!(sha256::digest(&bytes).to_uppercase(), fixture["txSha256"]);
-        let decoded = decode_block_transaction(&StateTransitionDecoder::new(), encoded, 7392, 0)
-            .await
-            .unwrap();
-        assert_eq!(decoded.serialize_to_bytes().unwrap(), bytes);
-        let StateTransition::DataContractCreate(transition) = decoded else {
+        assert!(decode_block_transaction(&StateTransitionDecoder::new(), encoded, 7392, 0).await.is_err(),
+            "pre-reset beta.2 token wire must not be interpreted as beta.5");
+        let decoded = dpp_legacy_beta2::state_transition::state_transition_factory::StateTransitionFactory {}
+            .create_from_buffer(&bytes).unwrap();
+        assert_eq!(dpp_legacy_beta2::serialization::PlatformSerializable::serialize_to_bytes(&decoded).unwrap(), bytes);
+        let dpp_legacy_beta2::state_transition::StateTransition::DataContractCreate(legacy_transition) = decoded else {
             panic!("expected data contract creation");
         };
+        // Published JSON conversion supplies beta.5's default transferable=true.
+        // This is a semantic projection test only, never a live wire fallback.
+        let legacy_format = match legacy_transition {
+            dpp_legacy_beta2::state_transition::data_contract_create_transition::DataContractCreateTransition::V0(v) => v.data_contract,
+            dpp_legacy_beta2::state_transition::data_contract_create_transition::DataContractCreateTransition::V1(v) => v.data_contract,
+        };
+        let dpp_legacy_beta2::data_contract::serialized_version::DataContractInSerializationFormat::V1(legacy_format) = legacy_format else {
+            panic!("expected archived V1 contract");
+        };
+        let format = dpp::data_contract::serialized_version::DataContractInSerializationFormat::V1(
+            serde_json::from_value(serde_json::to_value(legacy_format).unwrap()).unwrap()
+        );
+        // Synthetic envelope exercises the unchanged schema/token projection;
+        // no signed fields are claimed to be converted between wire versions.
+        let transition = dpp::state_transition::data_contract_create_transition::DataContractCreateTransition::V0(
+            dpp::state_transition::data_contract_create_transition::DataContractCreateTransitionV0 {
+                data_contract: format, identity_nonce: 0, user_fee_increase: 0,
+                signature_public_key_id: 0, signature: Default::default(),
+            }
+        );
         // The production conversion must retain the complete token configuration,
         // including V1 fields, rather than coerce it to the old V0 representation.
         let contract = crate::entities::data_contract::DataContract::from(transition);

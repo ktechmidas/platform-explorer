@@ -776,10 +776,14 @@ mod tests {
         let version = dpp::version::PlatformVersion::get(14).unwrap();
         let mut previous_decoder_input = format.clone();
         previous_decoder_input.document_schemas_mut().retain(|name, _| name == &document_type_name);
-        let error = dpp::data_contract::DataContract::try_from_platform_versioned(
+        // Published beta.5 now understands countPresent natively. Keep the
+        // original fixture and all preservation checks, without asserting the
+        // historical beta.2 parser limitation still exists.
+        let native_contract = dpp::data_contract::DataContract::try_from_platform_versioned(
             previous_decoder_input, false, &mut vec![], version,
-        ).unwrap_err().to_string();
-        assert!(error.contains("countPresent"), "must reproduce actual compatibility failure: {error}");
+        ).expect("beta.5 supports the captured countPresent expression");
+        let native_type = native_contract.document_type_for_name(&document_type_name).unwrap();
+        assert_eq!(serde_json::to_value(native_type.schema()).unwrap(), original_schema[&document_type_name]);
 
         let contract = restore_document_contract(format.clone(), &document_type_name, version).unwrap();
         assert_eq!(format, original_format, "retained contract must stay unchanged");
