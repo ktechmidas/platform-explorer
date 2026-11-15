@@ -31,6 +31,7 @@ impl From<DataContractCreateTransition> for DataContract {
             DataContractCreateTransition::V1(st) => st.data_contract,
         };
         match data_contract {
+            DataContractInSerializationFormat::V2(_) => unreachable!("pre-SQL projection guard rejects contract V2"),
             DataContractInSerializationFormat::V0(data_contract) => {
                 let identifier = data_contract.id;
                 let version = data_contract.version;
@@ -88,6 +89,7 @@ impl From<DataContractUpdateTransition> for DataContract {
                 let data_contract = data_contract_update_transition.data_contract;
 
                 match data_contract {
+            DataContractInSerializationFormat::V2(_) => unreachable!("pre-SQL projection guard rejects contract V2"),
                     DataContractInSerializationFormat::V0(data_contract) => {
                         let identifier = data_contract.id;
                         let version = data_contract.version;
@@ -142,8 +144,8 @@ impl From<DataContractUpdateTransition> for DataContract {
 
 impl From<SystemDataContract> for DataContract {
     fn from(data_contract: SystemDataContract) -> Self {
-        let platform_version = dpp::version::PlatformVersion::get(14)
-            .expect("protocol 14 must be supported by pinned DPP");
+        let platform_version = dpp::version::PlatformVersion::get(15)
+            .expect("protocol 15 must be supported by pinned DPP");
         let name = match data_contract {
             SystemDataContract::Withdrawals => "Withdrawals",
             SystemDataContract::MasternodeRewards => "MasternodeRewards",
@@ -156,6 +158,8 @@ impl From<SystemDataContract> for DataContract {
             SystemDataContract::DocumentHistory => "DocumentHistory",
             SystemDataContract::AppConnect => "AppConnect",
             SystemDataContract::ModerationCharters => "ModerationCharters",
+            SystemDataContract::DecisionProposals => "DecisionProposals",
+            SystemDataContract::TokenMarket => "TokenMarket",
         };
         let identifier = data_contract.id();
         let source = data_contract.source(platform_version).ok();
@@ -211,8 +215,8 @@ impl From<Row> for DataContract {
 mod tests {
     use super::*;
     #[test]
-    fn protocol_14_catalog_has_real_schema_and_owner_for_every_registered_contract() {
-        let version = dpp::version::PlatformVersion::get(14).unwrap();
+    fn protocol_15_catalog_has_real_schema_and_owner_for_every_registered_contract() {
+        let version = dpp::version::PlatformVersion::get(15).unwrap();
         let mut count = 0;
         for contract in SystemDataContract::ALL {
             if contract == SystemDataContract::FeatureFlags {
@@ -225,6 +229,6 @@ mod tests {
             assert_eq!(indexed.schema, Some(source.document_schemas));
             count += 1;
         }
-        assert_eq!(count, 10);
+        assert_eq!(count, 12);
     }
 }

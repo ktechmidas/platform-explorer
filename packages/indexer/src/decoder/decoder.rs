@@ -35,6 +35,21 @@ mod tests {
     use dpp::state_transition::batch_transition::BatchTransition;
 
     #[tokio::test]
+    async fn palmatum_340_complete_wire_regression() {
+        let fixture: serde_json::Value = serde_json::from_str(include_str!("../../tests/fixtures/palmatum-340.json")).unwrap();
+        let result: crate::models::TDTxResult = serde_json::from_value(fixture["result"].clone()).unwrap();
+        assert_eq!(result.code.unwrap_or(0), 0);
+        let encoded = fixture["txBase64"].as_str().unwrap();
+        let bytes = STANDARD.decode(encoded).unwrap();
+        assert_eq!(bytes.len(), 1036);
+        assert_eq!(sha256::digest(&bytes).to_uppercase(), fixture["txSha256"]);
+        let transition = decode_block_transaction(&StateTransitionDecoder::new(), encoded, 340, 0).await.unwrap();
+        assert_eq!(transition.serialize_to_bytes().unwrap(), bytes);
+        assert!(matches!(transition, StateTransition::DataContractCreate(_)));
+        assert!(StateTransitionDecoder::new().decode(bytes[..bytes.len()/2].to_vec()).await.is_err());
+    }
+
+    #[tokio::test]
     async fn sakura_beta5_contract_485_preserves_complete_wire_data() {
         let fixture: serde_json::Value = serde_json::from_str(include_str!(
             "../../tests/fixtures/sakura-beta5-contract-485.json"

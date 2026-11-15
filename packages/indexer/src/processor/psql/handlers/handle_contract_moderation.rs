@@ -172,10 +172,10 @@ fn restore_document_contract(
         ));
     }
     format
-        .document_schemas_mut()
+        .document_schemas_mut().map_err(|e| e.to_string())?
         .retain(|name, _| name == document_type_name);
     format
-        .document_schemas_mut()
+        .document_schemas_mut().map_err(|e| e.to_string())?
         .get_mut(document_type_name)
         .expect("target schema was checked above")
         .remove_optional_value("propertyConstraints")
@@ -373,7 +373,7 @@ impl PSQLProcessor {
                     StateTransition::DataContractUpdate(dpp::state_transition::data_contract_update_transition::DataContractUpdateTransition::V0(v)) => v.data_contract,
                     _ => return Err("contract row does not reference a contract transition".into()),
                 };
-                let version = dpp::version::PlatformVersion::get(14).map_err(|e| e.to_string())?;
+                let version = dpp::version::PlatformVersion::get(15).map_err(|e| e.to_string())?;
                 let full_contract = restore_document_contract(format, document_type_name, version)?;
                 let document_type = full_contract
                     .document_type_for_name(document_type_name)
@@ -775,7 +775,7 @@ mod tests {
 
         let version = dpp::version::PlatformVersion::get(14).unwrap();
         let mut previous_decoder_input = format.clone();
-        previous_decoder_input.document_schemas_mut().retain(|name, _| name == &document_type_name);
+        previous_decoder_input.document_schemas_mut().unwrap().retain(|name, _| name == &document_type_name);
         // Published beta.5 now understands countPresent natively. Keep the
         // original fixture and all preservation checks, without asserting the
         // historical beta.2 parser limitation still exists.

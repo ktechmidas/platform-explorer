@@ -22,7 +22,7 @@ pub(crate) async fn decode_block_transaction(
             detail: error.to_string(),
         }
     })?;
-    decoder
+    let transition = decoder
         .decode(bytes)
         .await
         .map_err(|error| ProcessorError::TransactionError {
@@ -30,7 +30,37 @@ pub(crate) async fn decode_block_transaction(
             index,
             stage: "state transition decode",
             detail: error.to_string(),
-        })
+        })?;
+    validate_projection(&transition).map_err(|detail| ProcessorError::TransactionError {
+        height, index, stage: "protocol 15 projection", detail: detail.into(),
+    })?;
+    Ok(transition)
+}
+
+// Reject unsupported projection shapes before SQL begins. Never skip a signed
+// transition or reinterpret a new wire variant as an old one.
+fn validate_projection(st: &StateTransition) -> Result<(), &'static str> {
+    use dpp::data_contract::serialized_version::DataContractInSerializationFormat as Format;
+    use dpp::state_transition::data_contract_create_transition::DataContractCreateTransition as Create;
+    use dpp::state_transition::data_contract_update_transition::DataContractUpdateTransition as Update;
+    use dpp::state_transition::batch_transition::BatchTransition;
+    use dpp::state_transition::batch_transition::batched_transition::{BatchedTransition, DocumentTransition};
+    use dpp::state_transition::masternode_vote_transition::accessors::MasternodeVoteTransitionAccessorsV0;
+    use dpp::voting::{votes::{Vote, resource_vote::ResourceVote}, vote_polls::VotePoll};
+    match st {
+        StateTransition::DataContractCreate(Create::V0(v)) if matches!(v.data_contract, Format::V2(_)) => Err("contract V2 projection unsupported"),
+        StateTransition::DataContractCreate(Create::V1(v)) if matches!(v.data_contract, Format::V2(_)) => Err("contract V2 projection unsupported"),
+        StateTransition::DataContractUpdate(Update::V0(v)) if matches!(v.data_contract, Format::V2(_)) => Err("contract V2 projection unsupported"),
+        StateTransition::PrivateDocumentCreateFromShieldedPool(_) => Err("private document projection unsupported"),
+        StateTransition::Batch(BatchTransition::V0(v)) if v.transitions.iter().any(|d| matches!(d, DocumentTransition::Erase(_))) => Err("document erase projection unsupported"),
+        StateTransition::Batch(BatchTransition::V1(v)) if v.transitions.iter().any(|d| matches!(d, BatchedTransition::Document(DocumentTransition::Erase(_)))) => Err("document erase projection unsupported"),
+        StateTransition::MasternodeVote(v) => match v.vote() {
+            Vote::YesNoVote(_) => Err("yes/no vote projection unsupported"),
+            Vote::ResourceVote(ResourceVote::V0(v)) if matches!(v.vote_poll, VotePoll::YesNoVotePoll(_)) => Err("yes/no poll projection unsupported"),
+            _ => Ok(()),
+        },
+        _ => Ok(()),
+    }
 }
 
 impl PSQLProcessor {
@@ -105,6 +135,31 @@ impl PSQLProcessor {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn new_erase_shape_fails_before_sql_in_both_batch_versions() {
+        use dpp::identifier::Identifier;
+        use dpp::serialization::PlatformSerializable;
+        use dpp::state_transition::batch_transition::{BatchTransition, BatchTransitionV0, BatchTransitionV1};
+        use dpp::state_transition::batch_transition::batched_transition::{BatchedTransition, DocumentTransition};
+        use dpp::state_transition::batch_transition::batched_transition::document_erase_transition::{DocumentEraseTransition, DocumentEraseTransitionV0};
+        use dpp::state_transition::batch_transition::document_base_transition::{DocumentBaseTransition, v0::DocumentBaseTransitionV0};
+        let erase = DocumentTransition::Erase(DocumentEraseTransition::V0(DocumentEraseTransitionV0 {
+            base: DocumentBaseTransition::V0(DocumentBaseTransitionV0 {
+                id: Identifier::new([3;32]), identity_contract_nonce: 1,
+                document_type_name: "note".into(), data_contract_id: Identifier::new([4;32]),
+            }),
+        }));
+        for batch in [BatchTransition::V0(BatchTransitionV0 { transitions: vec![erase.clone()], ..Default::default() }),
+                      BatchTransition::V1(BatchTransitionV1 { transitions: vec![BatchedTransition::Document(erase.clone())], ..Default::default() })] {
+            let st = StateTransition::Batch(batch);
+            assert_eq!(validate_projection(&st), Err("document erase projection unsupported"));
+            let raw = st.serialize_to_bytes().unwrap();
+            let encoded = general_purpose::STANDARD.encode(raw);
+            let error = decode_block_transaction(&StateTransitionDecoder::new(), &encoded, 999, 2).await.unwrap_err();
+            assert!(matches!(error, ProcessorError::TransactionError {height:999, index:2, stage:"protocol 15 projection", ..}));
+        }
+    }
 
     #[tokio::test]
     async fn invalid_base64_returns_block_and_transaction_context() {

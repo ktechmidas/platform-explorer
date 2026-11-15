@@ -41,6 +41,7 @@ impl PSQLProcessor {
                         detail: "empty document batch".into(),
                     }
                 })? {
+                    DocumentTransition::Erase(_) => unreachable!("pre-SQL projection guard rejects erase"),
                     DocumentTransition::Create(_) => Some(BatchType::DocumentCreateTransition),
                     DocumentTransition::Replace(_) => Some(BatchType::DocumentReplaceTransition),
                     DocumentTransition::Delete(_) => Some(BatchType::DocumentDeleteTransition),
@@ -62,7 +63,8 @@ impl PSQLProcessor {
                     }
                 })? {
                     BatchedTransition::Document(document_transition) => match document_transition {
-                        DocumentTransition::Create(_) => Some(BatchType::DocumentCreateTransition),
+                        DocumentTransition::Erase(_) => unreachable!("pre-SQL projection guard rejects erase"),
+                    DocumentTransition::Create(_) => Some(BatchType::DocumentCreateTransition),
                         DocumentTransition::Replace(_) => {
                             Some(BatchType::DocumentReplaceTransition)
                         }
@@ -165,6 +167,7 @@ impl PSQLProcessor {
         }
 
         match state_transition {
+            StateTransition::PrivateDocumentCreateFromShieldedPool(_) => unreachable!("pre-SQL projection guard rejects private document"),
             StateTransition::TokenShieldedTransferWithShieldedFee(_)
             | StateTransition::TokenUnshieldWithShieldedFee(_)
             | StateTransition::TokenPurchaseFromShieldedPool(_) => {

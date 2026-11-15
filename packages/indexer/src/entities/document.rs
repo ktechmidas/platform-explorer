@@ -38,6 +38,7 @@ impl From<DocumentTransition> for Document {
         let transition_type = value.action_type();
 
         match value {
+            DocumentTransition::Erase(_) => unreachable!("pre-SQL projection guard rejects erase"),
             DocumentTransition::Create(transition) => {
                 let base = transition.base().clone();
                 let data = transition.data().clone();

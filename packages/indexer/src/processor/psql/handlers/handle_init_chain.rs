@@ -4,14 +4,14 @@ use deadpool_postgres::Transaction;
 use dpp::version::PlatformVersion;
 
 impl PSQLProcessor {
-    /// Fill missing protocol-14 system contracts on both a fresh index and a
+    /// Fill missing protocol-15 system contracts on both a fresh index and a
     /// retained pre-upgrade index. Existing rows and human data are not replaced.
     pub async fn ensure_system_contracts(
         &self,
         height: i32,
         sql_transaction: &Transaction<'_>,
     ) -> Result<(), ProcessorError> {
-        let version = PlatformVersion::get(14).expect("pinned DPP supports protocol 14");
+        let version = PlatformVersion::get(15).expect("pinned DPP supports protocol 15");
         for contract in SystemDataContract::ALL {
             // Reserved discriminant, explicitly never registered by Platform.
             if contract == SystemDataContract::FeatureFlags {

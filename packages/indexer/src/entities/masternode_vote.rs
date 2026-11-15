@@ -43,8 +43,10 @@ impl From<(MasternodeVoteTransition, ProTxInfo)> for MasternodeVote {
         };
 
         let vote_info: VoteInfo = match vote {
+            Vote::YesNoVote(_) => unreachable!("pre-SQL projection guard rejects yes/no vote"),
             Vote::ResourceVote(resource_vote) => match resource_vote {
                 ResourceVote::V0(resource_vote_v0) => match resource_vote_v0.clone().vote_poll {
+                    VotePoll::YesNoVotePoll(_) => unreachable!("pre-SQL projection guard rejects yes/no poll"),
                     VotePoll::ContestedDocumentResourceVotePoll(vote_poll) => VoteInfo {
                         choice: resource_vote_v0.resource_vote_choice,
                         data_contract_identifier: vote_poll.contract_id,

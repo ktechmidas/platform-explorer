@@ -219,6 +219,7 @@ impl PSQLProcessor {
             SystemDataContract::DocumentHistory => {}
             SystemDataContract::AppConnect => {}
             SystemDataContract::ModerationCharters => {}
+            SystemDataContract::DecisionProposals | SystemDataContract::TokenMarket => {}
         }
     }
 }
