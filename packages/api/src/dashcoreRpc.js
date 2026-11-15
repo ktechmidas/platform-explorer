@@ -79,7 +79,26 @@ class DashCoreRPC {
   }
 
   static async getQuorumInfo (quorumHash, llmqType = 1) {
-    return await this.callMethod('quorum', ['info', llmqType, quorumHash])
+    // The released dashd-rpc callspec coerces quorum arguments to strings.
+    // Core 24 requires llmqType to remain a JSON number.
+    const type = Number(llmqType)
+    if (!Number.isInteger(type) || type < 1) throw new ServiceNotAvailableError()
+    try {
+      const response = await fetch(`${config.protocol}://${config.host}:${config.port}/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Basic ' + Buffer.from(`${config.user}:${config.pass}`).toString('base64')
+        },
+        body: JSON.stringify({ jsonrpc: '1.0', id: 'explorer-quorum', method: 'quorum', params: ['info', type, quorumHash] }),
+        signal: AbortSignal.timeout(15000)
+      })
+      const value = await response.json()
+      if (!response.ok || value.error || !value.result) throw new ServiceNotAvailableError()
+      return value.result
+    } catch (_) {
+      throw new ServiceNotAvailableError()
+    }
   }
 
   static async getNodeMemberOfQuorum (proTxHash, count) {
