@@ -73,9 +73,12 @@ class DashCoreRPC {
 
   static async getQuorumsListExtended (height) {
     const args = ['listextended']
-    if (height) args.push(height)
+    if (height !== undefined && height !== null) {
+      if (!Number.isSafeInteger(height) || height < 0) throw new ServiceNotAvailableError()
+      args.push(height)
+    }
 
-    return await this.callMethod('quorum', args)
+    return await this.callTypedQuorum(args)
   }
 
   static async getQuorumInfo (quorumHash, llmqType = 1) {
@@ -83,6 +86,12 @@ class DashCoreRPC {
     // Core 24 requires llmqType to remain a JSON number.
     const type = Number(llmqType)
     if (!Number.isInteger(type) || type < 1) throw new ServiceNotAvailableError()
+    return await this.callTypedQuorum(['info', type, quorumHash])
+  }
+
+  // Preserve Core JSON argument types; the released generic callspec coerces
+  // listextended height to a string before serialization. Do not modify it.
+  static async callTypedQuorum (args) {
     try {
       const response = await fetch(`${config.protocol}://${config.host}:${config.port}/`, {
         method: 'POST',
@@ -90,7 +99,7 @@ class DashCoreRPC {
           'Content-Type': 'application/json',
           Authorization: 'Basic ' + Buffer.from(`${config.user}:${config.pass}`).toString('base64')
         },
-        body: JSON.stringify({ jsonrpc: '1.0', id: 'explorer-quorum', method: 'quorum', params: ['info', type, quorumHash] }),
+        body: JSON.stringify({ jsonrpc: '1.0', id: 'explorer-quorum', method: 'quorum', params: args }),
         signal: AbortSignal.timeout(15000)
       })
       const value = await response.json()
