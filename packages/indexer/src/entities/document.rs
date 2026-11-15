@@ -38,7 +38,16 @@ impl From<DocumentTransition> for Document {
         let transition_type = value.action_type();
 
         match value {
-            DocumentTransition::Erase(_) => unreachable!("pre-SQL projection guard rejects erase"),
+            DocumentTransition::Erase(transition) => {
+                let dpp::state_transition::batch_transition::batched_transition::document_erase_transition::DocumentEraseTransition::V0(transition) = transition;
+                let base = transition.base;
+                // Append an exact ERASE tombstone. Preserve prior Explorer history;
+                // do not perform the consensus operation against the node or DB.
+                Document { identifier: base.id(), document_type_name: base.document_type_name().clone(),
+                    transition_type, owner: None, price: None, data: None,
+                    data_contract_identifier: base.data_contract_id(), revision: None,
+                    deleted: true, is_system: false, prefunded_voting_balance: None }
+            },
             DocumentTransition::Create(transition) => {
                 let base = transition.base().clone();
                 let data = transition.data().clone();

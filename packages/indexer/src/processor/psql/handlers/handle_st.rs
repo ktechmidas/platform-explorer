@@ -41,7 +41,7 @@ impl PSQLProcessor {
                         detail: "empty document batch".into(),
                     }
                 })? {
-                    DocumentTransition::Erase(_) => unreachable!("pre-SQL projection guard rejects erase"),
+                    DocumentTransition::Erase(_) => Some(BatchType::DocumentEraseTransition),
                     DocumentTransition::Create(_) => Some(BatchType::DocumentCreateTransition),
                     DocumentTransition::Replace(_) => Some(BatchType::DocumentReplaceTransition),
                     DocumentTransition::Delete(_) => Some(BatchType::DocumentDeleteTransition),
@@ -63,7 +63,7 @@ impl PSQLProcessor {
                     }
                 })? {
                     BatchedTransition::Document(document_transition) => match document_transition {
-                        DocumentTransition::Erase(_) => unreachable!("pre-SQL projection guard rejects erase"),
+                        DocumentTransition::Erase(_) => Some(BatchType::DocumentEraseTransition),
                     DocumentTransition::Create(_) => Some(BatchType::DocumentCreateTransition),
                         DocumentTransition::Replace(_) => {
                             Some(BatchType::DocumentReplaceTransition)

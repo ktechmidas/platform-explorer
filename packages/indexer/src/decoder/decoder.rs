@@ -35,6 +35,22 @@ mod tests {
     use dpp::state_transition::batch_transition::BatchTransition;
 
     #[tokio::test]
+    async fn palmatum_453_rejected_erase_retains_exact_signed_bytes_and_result() {
+        let f: serde_json::Value = serde_json::from_str(include_str!("../../tests/fixtures/palmatum-453.json")).unwrap();
+        let result: crate::models::TDTxResult = serde_json::from_value(f["result"].clone()).unwrap();
+        assert_eq!(result.code.unwrap_or(0),10404);
+        let encoded = f["txBase64"].as_str().unwrap(); let raw=STANDARD.decode(encoded).unwrap();
+        assert_eq!(sha256::digest(&raw).to_uppercase(),f["txSha256"]);
+        let st=decode_block_transaction(&StateTransitionDecoder::new(),encoded,453,0).await.unwrap();
+        assert_eq!(st.serialize_to_bytes().unwrap(),raw);
+        let StateTransition::Batch(BatchTransition::V1(batch))=st else {panic!("expected V1 batch")};
+        assert_eq!(batch.transitions.len(),1);
+        let BatchedTransition::Document(doc)=batch.transitions[0].clone() else {panic!("expected document")};
+        assert!(matches!(doc,dpp::state_transition::batch_transition::batched_transition::DocumentTransition::Erase(_)));
+        let projected=Document::from(doc); assert!(projected.deleted);assert!(projected.data.is_none());assert!(projected.revision.is_none());
+    }
+
+    #[tokio::test]
     async fn palmatum_340_complete_wire_regression() {
         let fixture: serde_json::Value = serde_json::from_str(include_str!("../../tests/fixtures/palmatum-340.json")).unwrap();
         let result: crate::models::TDTxResult = serde_json::from_value(fixture["result"].clone()).unwrap();

@@ -31,9 +31,6 @@ pub(crate) async fn decode_block_transaction(
             stage: "state transition decode",
             detail: error.to_string(),
         })?;
-    validate_projection(&transition).map_err(|detail| ProcessorError::TransactionError {
-        height, index, stage: "protocol 15 projection", detail: detail.into(),
-    })?;
     Ok(transition)
 }
 
@@ -43,8 +40,6 @@ fn validate_projection(st: &StateTransition) -> Result<(), &'static str> {
     use dpp::data_contract::serialized_version::DataContractInSerializationFormat as Format;
     use dpp::state_transition::data_contract_create_transition::DataContractCreateTransition as Create;
     use dpp::state_transition::data_contract_update_transition::DataContractUpdateTransition as Update;
-    use dpp::state_transition::batch_transition::BatchTransition;
-    use dpp::state_transition::batch_transition::batched_transition::{BatchedTransition, DocumentTransition};
     use dpp::state_transition::masternode_vote_transition::accessors::MasternodeVoteTransitionAccessorsV0;
     use dpp::voting::{votes::{Vote, resource_vote::ResourceVote}, vote_polls::VotePoll};
     match st {
@@ -52,8 +47,6 @@ fn validate_projection(st: &StateTransition) -> Result<(), &'static str> {
         StateTransition::DataContractCreate(Create::V1(v)) if matches!(v.data_contract, Format::V2(_)) => Err("contract V2 projection unsupported"),
         StateTransition::DataContractUpdate(Update::V0(v)) if matches!(v.data_contract, Format::V2(_)) => Err("contract V2 projection unsupported"),
         StateTransition::PrivateDocumentCreateFromShieldedPool(_) => Err("private document projection unsupported"),
-        StateTransition::Batch(BatchTransition::V0(v)) if v.transitions.iter().any(|d| matches!(d, DocumentTransition::Erase(_))) => Err("document erase projection unsupported"),
-        StateTransition::Batch(BatchTransition::V1(v)) if v.transitions.iter().any(|d| matches!(d, BatchedTransition::Document(DocumentTransition::Erase(_)))) => Err("document erase projection unsupported"),
         StateTransition::MasternodeVote(v) => match v.vote() {
             Vote::YesNoVote(_) => Err("yes/no vote projection unsupported"),
             Vote::ResourceVote(ResourceVote::V0(v)) if matches!(v.vote_poll, VotePoll::YesNoVotePoll(_)) => Err("yes/no poll projection unsupported"),
@@ -77,8 +70,15 @@ impl PSQLProcessor {
 
         let mut transitions = Vec::with_capacity(block.txs.len());
         for (index, tx) in block.txs.iter().enumerate() {
-            transitions
-                .push(decode_block_transaction(&self.decoder, &tx.data, height, index).await?);
+            let decoded = decode_block_transaction(&self.decoder, &tx.data, height, index).await?;
+            // Rejected chain transactions retain their raw bytes/result but do
+            // not mutate projections. Gate only successful execution shapes.
+            if matches!(tx.status, crate::models::TransactionStatus::SUCCESS) {
+                validate_projection(&decoded).map_err(|detail| ProcessorError::TransactionError {
+                    height, index, stage: "protocol 15 projection", detail: detail.into(),
+                })?;
+            }
+            transitions.push(decoded);
         }
 
         let mut client = self.dao.connection_pool.get().await?;
@@ -137,7 +137,7 @@ mod tests {
     use super::*;
 
     #[tokio::test]
-    async fn new_erase_shape_fails_before_sql_in_both_batch_versions() {
+    async fn erase_shape_projects_tombstone_in_both_batch_versions() {
         use dpp::identifier::Identifier;
         use dpp::serialization::PlatformSerializable;
         use dpp::state_transition::batch_transition::{BatchTransition, BatchTransitionV0, BatchTransitionV1};
@@ -153,11 +153,15 @@ mod tests {
         for batch in [BatchTransition::V0(BatchTransitionV0 { transitions: vec![erase.clone()], ..Default::default() }),
                       BatchTransition::V1(BatchTransitionV1 { transitions: vec![BatchedTransition::Document(erase.clone())], ..Default::default() })] {
             let st = StateTransition::Batch(batch);
-            assert_eq!(validate_projection(&st), Err("document erase projection unsupported"));
+            assert_eq!(validate_projection(&st), Ok(()));
+            let projected = crate::entities::document::Document::from(erase.clone());
+            assert!(projected.deleted); assert!(projected.data.is_none());
+            assert_eq!(projected.identifier, Identifier::new([3;32]));
+            assert_eq!(projected.data_contract_identifier, Identifier::new([4;32]));
             let raw = st.serialize_to_bytes().unwrap();
             let encoded = general_purpose::STANDARD.encode(raw);
-            let error = decode_block_transaction(&StateTransitionDecoder::new(), &encoded, 999, 2).await.unwrap_err();
-            assert!(matches!(error, ProcessorError::TransactionError {height:999, index:2, stage:"protocol 15 projection", ..}));
+            let decoded = decode_block_transaction(&StateTransitionDecoder::new(), &encoded, 999, 2).await.unwrap();
+            assert_eq!(decoded.serialize_to_bytes().unwrap(), st.serialize_to_bytes().unwrap());
         }
     }
 

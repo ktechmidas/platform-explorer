@@ -79,7 +79,7 @@ impl PSQLProcessor {
             && document_transition.data_contract_id() == SystemDataContract::DPNS.id()
         {
             match &document_transition {
-                DocumentTransition::Erase(_) => unreachable!("pre-SQL projection guard rejects erase"),
+
                 DocumentTransition::Create(_) | DocumentTransition::Replace(_) => {
                     let label = document_transition
                         .data()
@@ -169,7 +169,8 @@ impl PSQLProcessor {
                         .await
                         .unwrap();
                 }
-                DocumentTransition::Delete(_)
+                DocumentTransition::Erase(_)
+                | DocumentTransition::Delete(_)
                 | DocumentTransition::IndexOnlyDelete(_)
                 | DocumentTransition::UpdatePrice(_) => {}
             }

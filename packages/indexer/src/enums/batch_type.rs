@@ -27,6 +27,7 @@ pub enum BatchType {
     TokenBurnFromPoolTransition,
     TokenClaimToPoolTransition,
     TokenDirectPurchaseToPoolTransition,
+    DocumentEraseTransition,
 }
 
 impl fmt::Display for BatchType {
@@ -35,6 +36,7 @@ impl fmt::Display for BatchType {
             BatchType::DocumentCreateTransition => "DOCUMENT_CREATE",
             BatchType::DocumentReplaceTransition => "DOCUMENT_REPLACE",
             BatchType::DocumentDeleteTransition => "DOCUMENT_DELETE",
+            BatchType::DocumentEraseTransition => "DOCUMENT_ERASE",
             BatchType::DocumentIndexOnlyDeleteTransition => "DOCUMENT_INDEX_ONLY_DELETE",
             BatchType::DocumentTransferTransition => "DOCUMENT_TRANSFER",
             BatchType::DocumentUpdatePriceTransition => "DOCUMENT_UPDATE_PRICE",
@@ -76,5 +78,6 @@ mod tests {
             16
         );
         assert_eq!(BatchType::DocumentIndexOnlyDeleteTransition as i32, 17);
+        assert_eq!(BatchType::DocumentEraseTransition as i32, 25);
     }
 }
