@@ -183,7 +183,10 @@ impl PSQLProcessor {
         )
         .await;
 
-        if document_type == "dataContracts"
+        // Only body-bearing create/replace events can update metadata.
+        // Tombstones and ownership/price events retain their event without inventing a body.
+        if matches!(document_transition, DocumentTransition::Create(_) | DocumentTransition::Replace(_))
+            && document_type == "dataContracts"
             && document_transition.data_contract_id() == self.platform_explorer_identifier
         {
             let data_contract_identifier_str = document_transition

@@ -223,6 +223,7 @@ impl From<Row> for Document {
             5 => DocumentTransitionActionType::UpdatePrice,
             6 => DocumentTransitionActionType::IgnoreWhileBumpingRevision,
             7 => DocumentTransitionActionType::IndexOnlyDelete,
+            8 => DocumentTransitionActionType::Erase,
             _ => panic!("Unknown document transition type"),
         };
 
