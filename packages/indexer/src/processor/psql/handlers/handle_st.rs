@@ -167,7 +167,7 @@ impl PSQLProcessor {
         }
 
         match state_transition {
-            StateTransition::PrivateDocumentCreateFromShieldedPool(_) => unreachable!("pre-SQL projection guard rejects private document"),
+            StateTransition::PrivateDocumentCreateFromShieldedPool(st) => { self.handle_private_documents(st,st_hash.clone(),block_height,index as usize,sql_transaction).await?; },
             StateTransition::TokenShieldedTransferWithShieldedFee(_)
             | StateTransition::TokenUnshieldWithShieldedFee(_)
             | StateTransition::TokenPurchaseFromShieldedPool(_) => {

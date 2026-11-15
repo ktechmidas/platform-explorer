@@ -46,7 +46,6 @@ fn validate_projection(st: &StateTransition) -> Result<(), &'static str> {
         StateTransition::DataContractCreate(Create::V0(v)) if matches!(v.data_contract, Format::V2(_)) => Err("contract V2 projection unsupported"),
         StateTransition::DataContractCreate(Create::V1(v)) if matches!(v.data_contract, Format::V2(_)) => Err("contract V2 projection unsupported"),
         StateTransition::DataContractUpdate(Update::V0(v)) if matches!(v.data_contract, Format::V2(_)) => Err("contract V2 projection unsupported"),
-        StateTransition::PrivateDocumentCreateFromShieldedPool(_) => Err("private document projection unsupported"),
         StateTransition::MasternodeVote(v) => match v.vote() {
             Vote::YesNoVote(_) => Err("yes/no vote projection unsupported"),
             Vote::ResourceVote(ResourceVote::V0(v)) if matches!(v.vote_poll, VotePoll::YesNoVotePoll(_)) => Err("yes/no poll projection unsupported"),

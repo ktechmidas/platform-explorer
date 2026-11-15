@@ -15,3 +15,5 @@ mod handle_st;
 mod handle_token_configuration;
 mod handle_tokens;
 mod handle_validator;
+
+mod handle_private_documents;
