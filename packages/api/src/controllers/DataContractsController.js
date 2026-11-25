@@ -1,4 +1,6 @@
 const DataContractsDAO = require('../dao/DataContractsDAO')
+const { isContractVersionError } = require('../indexedEnrichment')
+const { getUnprovedDataContract } = require('../unprovedDapi')
 
 class DataContractsController {
   constructor (knex, sdk) {
@@ -72,7 +74,20 @@ class DataContractsController {
     let dataContract
 
     if (identifier) {
-      dataContract = await this.sdk.dataContracts.getDataContractByIdentifier(identifier)
+      try {
+        dataContract = await this.sdk.dataContracts.getDataContractByIdentifier(identifier)
+      } catch (error) {
+        // The SDK cannot decode this contract's format, so it cannot verify a proof of it
+        // either: pass on the bytes DAPI returns without one, and say so.
+        if (!isContractVersionError(error)) throw error
+        const bytes = await getUnprovedDataContract(this.sdk, identifier)
+
+        if (!bytes) {
+          return response.status(404).send({ message: 'data contract not found' })
+        }
+
+        return response.send({ base64: bytes.toString('base64'), verified: false })
+      }
     }
 
     if (!dataContract) {

@@ -4,7 +4,8 @@ const Token = require('./models/Token')
 const StateTransitionEnum = require('./enums/StateTransitionEnum')
 const { DPNS_CONTRACT } = require('./constants')
 
-const isContractVersionError = error => /unable to deserialize DataContract: UnexpectedVariant.*type_name: "DataContractConfig"/.test(error?.message ?? '')
+const isContractVersionError = error => /unable to deserialize DataContract: UnexpectedVariant.*type_name: "(?:DataContractConfig|DataContractInSerializationFormat)"/.test(error?.message ?? '')
+const isIdentityKeyVersionError = error => /unable to deserialize IdentityPublicKey: UnexpectedVariant/.test(error?.message ?? '')
 const isDocumentVersionError = error => /dpp unknown version on Document::from_bytes \(deserialization\), known versions:.*received:/.test(error?.message ?? '')
 
 const getIndexedTokenContract = async (knex, identifier, decode) => {
@@ -112,4 +113,4 @@ const getIndexedAliasDocument = async (knex, identifier) => {
   }
 }
 
-module.exports = { isContractVersionError, isDocumentVersionError, getIndexedTokenContract, indexedTokenToModel, getIndexedAliasDocument }
+module.exports = { isContractVersionError, isDocumentVersionError, isIdentityKeyVersionError, getIndexedTokenContract, indexedTokenToModel, getIndexedAliasDocument }

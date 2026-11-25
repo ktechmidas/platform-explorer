@@ -6,6 +6,7 @@ const { IdentifierWASM } = require('pshenmic-dpp')
 const StateTransitionEnum = require('../enums/StateTransitionEnum')
 const Intervals = require('../enums/IntervalsEnum')
 const WithdrawalStatusEnum = require('../enums/WithdrawalStatusEnum')
+const { isContractVersionError } = require('../indexedEnrichment')
 
 class IdentitiesController {
   constructor (knex, sdk) {
@@ -158,6 +159,7 @@ class IdentitiesController {
 
     const documents = []
     let startAfter
+    let fromIndex = false
 
     let currentPage = 0
 
@@ -170,7 +172,13 @@ class IdentitiesController {
         pageSize,
         undefined,
         startAfter
-      )
+      ).catch(error => {
+        // the SDK cannot read the withdrawals contract of this protocol version
+        if (!isContractVersionError(error)) throw error
+        fromIndex = true
+
+        return []
+      })
 
       documents.push(...batch)
 
@@ -179,6 +187,12 @@ class IdentitiesController {
       startAfter = batch[batch.length - 1].id
       currentPage += 1
     } while (currentPage <= maxPages)
+
+    if (fromIndex) {
+      const indexed = await this.identitiesDAO.getIndexedIdentityWithdrawals(identifier, order)
+
+      return response.send(new PaginatedResultSet(indexed, null, null, null))
+    }
 
     if (documents.length === 0) {
       return response.send(new PaginatedResultSet([], null, null, null))

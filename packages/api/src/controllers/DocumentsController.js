@@ -2,6 +2,8 @@ const DocumentsDAO = require('../dao/DocumentsDAO')
 const DataContractsDAO = require('../dao/DataContractsDAO')
 const Document = require('../models/Document')
 const { IdentifierWASM } = require('pshenmic-dpp')
+const { isContractVersionError } = require('../indexedEnrichment')
+const { getUnprovedDocument } = require('../unprovedDapi')
 
 class DocumentsController {
   constructor (knex, sdk) {
@@ -67,7 +69,19 @@ class DocumentsController {
     let dataContract
 
     if (identifier) {
-      dataContract = await this.sdk.dataContracts.getDataContractByIdentifier(contractId)
+      try {
+        dataContract = await this.sdk.dataContracts.getDataContractByIdentifier(contractId)
+      } catch (error) {
+        // see DataContractsController.getRawDataContract
+        if (!isContractVersionError(error)) throw error
+        const bytes = await getUnprovedDocument(this.sdk, contractId, documentTypeName, identifier)
+
+        if (!bytes) {
+          return response.status(404).send({ message: 'document not found' })
+        }
+
+        return response.send({ base64: bytes.toString('base64'), verified: false })
+      }
     }
 
     if (!dataContract) {

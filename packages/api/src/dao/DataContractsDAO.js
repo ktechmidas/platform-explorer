@@ -335,10 +335,19 @@ module.exports = class DataContractsDAO {
         })
       }))
     } catch (error) {
-      if (!isContractVersionError(error)) throw error
-      const contract = await getIndexedTokenContract(this.knex, identifier, decodeStateTransition)
-      groups = contract.groups.map(group => ({ group }))
-      tokens = await Promise.all(contract.tokens.map(config => indexedTokenToModel(contract, config, row, ownerAliases, this.sdk)))
+      // Groups and tokens come from the SDK or, when it cannot read the contract, from the
+      // indexed create transition. A contract that offers neither (a system contract, or one
+      // the SDK does not find) is still shown, without them.
+      try {
+        if (!isContractVersionError(error)) throw error
+        const contract = await getIndexedTokenContract(this.knex, identifier, decodeStateTransition)
+        groups = contract.groups.map(group => ({ group }))
+        tokens = await Promise.all(contract.tokens.map(config => indexedTokenToModel(contract, config, row, ownerAliases, this.sdk)))
+      } catch (fallbackError) {
+        console.error(fallbackError)
+        groups = null
+        tokens = null
+      }
     }
 
     return DataContract.fromObject({

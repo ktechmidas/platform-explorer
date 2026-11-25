@@ -362,7 +362,7 @@ module.exports = class TokensDAO {
     const ownersWithBalance = balances.reduce((acc, balance) => {
       return {
         ...acc,
-        [balance.identityId.base58()]: balance.balance.toString()
+        [balance.identityId.base58()]: balance.balance?.toString() ?? null
       }
     }, {})
 

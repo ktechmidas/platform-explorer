@@ -1753,6 +1753,29 @@ const getPlatformQuorums = async () => {
     })
   )
 
+  // The validator set's quorum can be older than the quorums Core still lists: a devnet makes a
+  // new one every 24 Core blocks and lists the newest four. Core still knows it by hash.
+  if (currentQuorumHash && !quorums.some(quorum => quorum.isCurrent)) {
+    const quorumInfo = await DashCoreRPC.getQuorumInfo(currentQuorumHash.toLowerCase(), quorumType)
+
+    if (quorumInfo?.members) {
+      const members = quorumInfo.members.map(member => ({
+        ...member,
+        proTxHash: member.proTxHash.toUpperCase()
+      }))
+
+      quorums.push(Quorum.fromObject({
+        ...quorumInfo,
+        creationHeight: quorumInfo.height,
+        minedBlockHash: quorumInfo.minedBlock,
+        numValidMembers: members.filter(member => member.valid).length,
+        quorumHash: currentQuorumHash.toUpperCase(),
+        members,
+        isCurrent: true
+      }))
+    }
+  }
+
   const platformQuorums = {
     quorumType,
     currentQuorumHash: currentQuorumHash?.toUpperCase() ?? null,

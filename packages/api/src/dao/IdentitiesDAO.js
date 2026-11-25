@@ -12,6 +12,14 @@ const {
   getAliasInfo, getAliasDocumentForIdentifiers
 } = require('../utils')
 const StateTransitionEnum = require('../enums/StateTransitionEnum')
+const { isIdentityKeyVersionError } = require('../indexedEnrichment')
+
+// An identity can hold a key of a format newer than the SDK's reader. Its page and the
+// identity list then go without what only the SDK could tell.
+const withoutUnreadableKeys = error => {
+  if (!isIdentityKeyVersionError(error)) throw error
+  return null
+}
 const BatchEnum = require('../enums/BatchEnum')
 const SeriesData = require('../models/SeriesData')
 
@@ -168,7 +176,7 @@ module.exports = class IdentitiesDAO {
       return getAliasStateByVote(aliasInfo, alias, identifier)
     }))
 
-    const publicKeys = await this.sdk.identities.getIdentityPublicKeys(identity.identifier)
+    const publicKeys = await this.sdk.identities.getIdentityPublicKeys(identity.identifier).catch(withoutUnreadableKeys)
 
     let fundingCoreTx = null
 
@@ -179,7 +187,8 @@ module.exports = class IdentitiesDAO {
     }
 
     const identityNonce = await this.sdk.identities.getIdentityNonce(identity.identifier)
-    const identityInfo = await this.sdk.identities.getIdentityByIdentifier(identity.identifier)
+    const identityInfo = await this.sdk.identities.getIdentityByIdentifier(identity.identifier).catch(withoutUnreadableKeys)
+    const balance = identityInfo ? identityInfo.balance : await this.sdk.identities.getIdentityBalance(identity.identifier)
 
     return Identity.fromObject({
       ...identity,
@@ -188,9 +197,9 @@ module.exports = class IdentitiesDAO {
       owner: identity.owner ?? identity.identifier,
       isSystem: identity.isSystem ?? false,
       aliases,
-      balance: String(identityInfo.balance),
+      balance: String(balance),
       nonce: String(identityNonce),
-      revision: String(identityInfo.revision),
+      revision: String(identityInfo ? identityInfo.revision : identity.revision),
       publicKeys: publicKeys?.map(key => {
         const contractBounds = key.getContractBounds()
 
@@ -390,7 +399,7 @@ module.exports = class IdentitiesDAO {
 
     const resultSet = await Promise.all(rows.map(async row => {
       const balance = await this.sdk.identities.getIdentityBalance(row.identifier.trim())
-      const identityInfo = await this.sdk.identities.getIdentityByIdentifier(row.identifier)
+      const identityInfo = await this.sdk.identities.getIdentityByIdentifier(row.identifier).catch(withoutUnreadableKeys)
 
       const aliasDocument = aliasDocuments[row.identifier.trim()]
 
@@ -404,7 +413,7 @@ module.exports = class IdentitiesDAO {
         ...row,
         owner: row.identity_owner,
         total_data_contracts: parseInt(row.total_data_contracts),
-        revision: String(identityInfo.revision),
+        revision: String(identityInfo ? identityInfo.revision : row.revision),
         total_documents: parseInt(row.total_documents),
         total_txs: parseInt(row.total_txs),
         balance: String(balance),
@@ -661,6 +670,35 @@ module.exports = class IdentitiesDAO {
       .andWhere('type', IDENTITY_CREDIT_WITHDRAWAL)
       .leftJoin('blocks', 'block_hash', 'blocks.hash')
       .orderBy('id', 'desc')
+  }
+
+  // Withdrawals as the index knows them, for when the SDK cannot read the withdrawals
+  // contract. The status of a withdrawal lives only in its document, so it is not reported.
+  getIndexedIdentityWithdrawals = async (identifier, order = 'asc') => {
+    const rows = await this.knex('state_transitions')
+      .select('state_transitions.hash', 'blocks.timestamp as timestamp', 'state_transitions.data as data')
+      .where('state_transitions.owner', identifier)
+      .andWhere('state_transitions.type', IDENTITY_CREDIT_WITHDRAWAL)
+      .andWhere('state_transitions.status', 'SUCCESS')
+      .leftJoin('blocks', 'block_hash', 'blocks.hash')
+      .orderBy('state_transitions.id', order === 'desc' ? 'desc' : 'asc')
+
+    return Promise.all(rows.map(async row => {
+      const decoded = await decodeStateTransition(row.data)
+
+      return {
+        document: null,
+        sender: identifier,
+        status: null,
+        timestamp: row.timestamp,
+        amount: decoded.amount ?? null,
+        withdrawalAddress: decoded.outputAddress ?? null,
+        transactionIndex: null,
+        transactionSignHeight: null,
+        hash: row.hash,
+        source: 'index'
+      }
+    }))
   }
 
   getIdentitiesHistorySeries = async (start, end, interval, intervalInMs) => {
