@@ -15,9 +15,13 @@ use dpp::state_transition::identity_credit_transfer_to_addresses_transition::Ide
 use dpp::state_transition::identity_credit_transfer_transition::IdentityCreditTransferTransition;
 use dpp::state_transition::identity_credit_withdrawal_transition::IdentityCreditWithdrawalTransition;
 use dpp::state_transition::identity_topup_from_addresses_transition::IdentityTopUpFromAddressesTransition;
+use dpp::state_transition::identity_topup_transition::accessors::IdentityTopUpTransitionAccessorsV0;
 use dpp::state_transition::identity_topup_transition::IdentityTopUpTransition;
 use dpp::state_transition::identity_update_transition::IdentityUpdateTransition;
 use dpp::state_transition::StateTransitionIdentityIdFromInputs;
+
+// an asset lock credit output is denominated in duffs
+const CREDITS_PER_DUFF: u64 = 1000;
 
 impl PSQLProcessor {
     pub async fn handle_identity_create(
@@ -28,32 +32,24 @@ impl PSQLProcessor {
     ) -> () {
         let asset_lock = state_transition.asset_lock_proof().clone();
 
-        let transaction = match asset_lock {
-            AssetLockProof::Instant(instant_lock) => instant_lock.transaction,
-            AssetLockProof::Chain(chain_lock) => {
-                let tx_hash = chain_lock.out_point.txid.to_string();
+        if let AssetLockProof::Chain(chain_lock) = &asset_lock {
+            let tx_hash = chain_lock.out_point.txid.to_string();
 
-                let transaction_info = self
-                    .dashcore_rpc
-                    .get_raw_transaction_info(&Txid::from_hex(&tx_hash).unwrap(), None)
-                    .unwrap();
+            let transaction_info = self
+                .dashcore_rpc
+                .get_raw_transaction_info(&Txid::from_hex(&tx_hash).unwrap(), None)
+                .unwrap();
 
-                if transaction_info.height.is_some()
-                    && transaction_info.height.unwrap() as u32 > chain_lock.core_chain_locked_height
-                {
-                    panic!("Transaction {} was mined after chain lock", &tx_hash)
-                }
-
-                let transaction = self
-                    .dashcore_rpc
-                    .get_raw_transaction(&Txid::from_hex(&tx_hash).unwrap(), None)
-                    .unwrap();
-
-                transaction
+            if transaction_info.height.is_some()
+                && transaction_info.height.unwrap() as u32 > chain_lock.core_chain_locked_height
+            {
+                panic!("Transaction {} was mined after chain lock", &tx_hash)
             }
-        };
+        }
 
-        let identity = Identity::from((state_transition, transaction));
+        let credits = self.get_asset_lock_amount(&asset_lock) * CREDITS_PER_DUFF;
+
+        let identity = Identity::from((state_transition, credits));
 
         let transfer = Transfer {
             sender: None,
@@ -91,7 +87,13 @@ impl PSQLProcessor {
         st_hash: String,
         sql_transaction: &Transaction<'_>,
     ) -> () {
-        let transfer = Transfer::from(state_transition);
+        let asset_lock_amount = self.get_asset_lock_amount(state_transition.asset_lock_proof());
+
+        let transfer = Transfer {
+            sender: None,
+            recipient: Some(state_transition.identity_id().clone()),
+            amount: asset_lock_amount * CREDITS_PER_DUFF,
+        };
 
         self.dao
             .create_transfer(transfer, st_hash.clone(), sql_transaction)
